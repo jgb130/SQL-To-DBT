@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive SQL to dbt Translator</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+        header {
+            background-color: #343a40;
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .main-container {
+            display: flex;
+            flex-grow: 1; /* Allow container to fill remaining height */
+            padding: 20px;
+            gap: 20px; /* Space between columns */
+        }
+        .left-panel {
+            width: 30%; /* Adjust width as needed */
+            min-width: 250px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            overflow-y: auto; /* Allow scrolling if content overflows */
+            display: flex;
+            flex-direction: column;
+        }
+        .right-panel {
+            width: 70%; /* Adjust width as needed */
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        .input-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: 600; color: #495057; }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 1rem;
+        }
+        textarea {
+            min-height: 200px; /* Adjust height */
+            font-family: monospace;
+            resize: vertical;
+            flex-grow: 1; /* Allow textarea to grow */
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background-color 0.2s ease;
+            margin-top: 10px; /* Add some space above buttons */
+        }
+        button:hover { background-color: #0056b3; }
+        button:disabled { background-color: #6c757d; cursor: not-allowed; }
+        #file-tree {
+            margin-top: 20px;
+            border-top: 1px solid #eee;
+            padding-top: 15px;
+            flex-grow: 1; /* Allow tree to take available space */
+            overflow-y: auto; /* Scroll tree if needed */
+        }
+        #file-tree ul { list-style: none; padding-left: 20px; margin: 5px 0; }
+        #file-tree li { margin-bottom: 3px; }
+        #file-tree .folder::before { content: '📁 '; margin-right: 5px; }
+        #file-tree .file::before { content: '📄 '; margin-right: 5px; }
+        #results { margin-top: 20px; }
+        #results h3 { margin-top: 0; color: #495057; }
+        #results pre {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: monospace;
+            border: 1px solid #ced4da;
+            max-height: 300px; /* Limit result height */
+            overflow-y: auto; /* Scroll result if needed */
+        }
+        .status-message {
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .status-success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .status-error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block; /* Keep on same line as text */
+            margin-left: 10px;
+            vertical-align: middle;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Interactive SQL to dbt Translator</h1>
+    </header>
+
+    <div class="main-container">
+        <div class="left-panel">
+            <h2>Load dbt Model</h2>
+            <div class="input-group">
+                <label for="github_url">GitHub Repository URL:</label>
+                <input type="text" id="github_url" name="github_url" placeholder="e.g., https://github.com/dbt-labs/jaffle_shop">
+            </div>
+            <button id="load-model-btn">Load Model</button>
+            <div id="load-status" class="status-message" style="display: none;">
+                <span id="load-status-text"></span>
+                <div id="load-loader" class="loader"></div>
+            </div>
+
+            <h2>Project Files</h2>
+            <div id="file-tree">
+                <p><i>Load a repository to see the file structure.</i></p>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <h2>Translate SQL</h2>
+             <div class="input-group" style="flex-grow: 1; display: flex; flex-direction: column;">
+                <label for="sql_query">SQL Query:</label>
+                <textarea id="sql_query" name="sql_query" placeholder="Enter SQL query using tables/models from the loaded project..."></textarea>
+            </div>
+            <button id="translate-btn" disabled>Translate</button> <div id="translate-status" class="status-message" style="display: none;">
+                 <span id="translate-status-text"></span>
+                 <div id="translate-loader" class="loader"></div>
+            </div>
+
+            <div id="results">
+                <h3>Translation Result:</h3>
+                <pre id="translated-sql-output"><code>-- Translation will appear here --</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const loadBtn = document.getElementById('load-model-btn');
+        const translateBtn = document.getElementById('translate-btn');
+        const githubUrlInput = document.getElementById('github_url');
+        const sqlQueryInput = document.getElementById('sql_query');
+        const fileTreeDiv = document.getElementById('file-tree');
+        const translatedSqlOutput = document.getElementById('translated-sql-output').querySelector('code');
+        const loadStatusDiv = document.getElementById('load-status');
+        const loadStatusText = document.getElementById('load-status-text');
+        const loadLoader = document.getElementById('load-loader');
+        const translateStatusDiv = document.getElementById('translate-status');
+        const translateStatusText = document.getElementById('translate-status-text');
+        const translateLoader = document.getElementById('translate-loader');
+
+        function showStatus(element, textElement, loaderElement, message, type = 'info', showLoader = false) {
+            textElement.textContent = message;
+            element.className = `status-message status-${type}`; // Set class for styling
+            element.style.display = 'block';
+            loaderElement.style.display = showLoader ? 'inline-block' : 'none';
+        }
+
+        function hideStatus(element) {
+            element.style.display = 'none';
+        }
+
+        // Function to build HTML for the file tree recursively
+        function buildTreeHtml(node, level = 0) {
+            let html = '<ul>';
+            // Sort keys alphabetically, folders first
+            const sortedKeys = Object.keys(node).sort((a, b) => {
+                const typeA = node[a]._type || 'folder'; // Default to folder if type missing (shouldn't happen)
+                const typeB = node[b]._type || 'folder';
+                if (typeA === 'folder' && typeB === 'file') return -1;
+                if (typeA === 'file' && typeB === 'folder') return 1;
+                return a.localeCompare(b); // Sort alphabetically otherwise
+            });
+
+            for (const key of sortedKeys) {
+                if (key === '_type') continue; // Skip internal type marker
+
+                const item = node[key];
+                if (item._type === 'folder') {
+                    html += `<li class="folder">${key}`;
+                    if (item.children && Object.keys(item.children).length > 0) {
+                        html += buildTreeHtml(item.children, level + 1);
+                    } else {
+                         html += '<ul><li><i>(empty)</i></li></ul>'; // Indicate empty folder
+                    }
+                    html += '</li>';
+                } else if (item._type === 'file') {
+                    html += `<li class="file">${key}</li>`;
+                }
+            }
+            html += '</ul>';
+            return html;
+        }
+
+        // --- Event Listener for Load Model ---
+        loadBtn.addEventListener('click', async () => {
+            const githubUrl = githubUrlInput.value.trim();
+            if (!githubUrl) {
+                showStatus(loadStatusDiv, loadStatusText, loadLoader, 'Please enter a GitHub URL.', 'error');
+                return;
+            }
+
+            // Disable buttons, show loader
+            loadBtn.disabled = true;
+            translateBtn.disabled = true; // Also disable translate during load
+            fileTreeDiv.innerHTML = ''; // Clear previous tree
+            translatedSqlOutput.textContent = '-- Translation will appear here --'; // Reset results
+            hideStatus(translateStatusDiv); // Hide translate status
+            showStatus(loadStatusDiv, loadStatusText, loadLoader, 'Loading model...', 'info', true);
+
+            try {
+                const response = await fetch('/load_model', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ github_url: githubUrl })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    showStatus(loadStatusDiv, loadStatusText, loadLoader, data.message || 'Model loaded successfully!', 'success');
+                    // Build and display file tree
+                    if (data.file_tree && Object.keys(data.file_tree).length > 0) {
+                        fileTreeDiv.innerHTML = buildTreeHtml(data.file_tree);
+                    } else {
+                        fileTreeDiv.innerHTML = '<p><i>No relevant files found or tree is empty.</i></p>';
+                    }
+                    translateBtn.disabled = false; // Enable translate button on success
+                } else {
+                    // Handle errors reported by the server
+                    showStatus(loadStatusDiv, loadStatusText, loadLoader, data.error || `Error: ${response.statusText}`, 'error');
+                    fileTreeDiv.innerHTML = '<p><i>Failed to load model.</i></p>';
+                }
+
+            } catch (error) {
+                console.error('Load Model Fetch Error:', error);
+                showStatus(loadStatusDiv, loadStatusText, loadLoader, `Network error or server unavailable: ${error.message}`, 'error');
+                fileTreeDiv.innerHTML = '<p><i>Failed to load model.</i></p>';
+            } finally {
+                // Re-enable load button regardless of outcome
+                loadBtn.disabled = false;
+                // Loader is hidden by showStatus unless explicitly kept
+                loadLoader.style.display = 'none';
+            }
+        });
+
+        // --- Event Listener for Translate ---
+        translateBtn.addEventListener('click', async () => {
+            const sqlQuery = sqlQueryInput.value.trim();
+            if (!sqlQuery) {
+                 showStatus(translateStatusDiv, translateStatusText, translateLoader, 'Please enter an SQL query.', 'error');
+                return;
+            }
+
+            // Disable button, show loader
+            translateBtn.disabled = true;
+            showStatus(translateStatusDiv, translateStatusText, translateLoader, 'Translating...', 'info', true);
+            translatedSqlOutput.textContent = ''; // Clear previous result
+
+            try {
+                const response = await fetch('/translate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sql_query: sqlQuery })
+                });
+
+                const data = await response.json();
+
+                if (response.ok && data.success) {
+                    hideStatus(translateStatusDiv); // Hide status on success
+                    translatedSqlOutput.textContent = data.translated_sql;
+                } else {
+                    // Handle errors from server (e.g., model not loaded, unmatched tables)
+                    showStatus(translateStatusDiv, translateStatusText, translateLoader, data.error || `Error: ${response.statusText}`, 'error');
+                    translatedSqlOutput.textContent = '-- Translation failed --'; // Indicate failure
+                }
+
+            } catch (error) {
+                console.error('Translate Fetch Error:', error);
+                showStatus(translateStatusDiv, translateStatusText, translateLoader, `Network error or server unavailable: ${error.message}`, 'error');
+                 translatedSqlOutput.textContent = '-- Translation failed --';
+            } finally {
+                // Re-enable button, hide loader
+                translateBtn.disabled = false;
+                translateLoader.style.display = 'none';
+            }
+        });
+
+    </script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translation Result</title>
+    <style>
+        body { font-family: sans-serif; line-height: 1.6; padding: 20px; max-width: 900px; margin: auto; background-color: #f4f4f4; }
+        h1 { color: #333; text-align: center; border-bottom: 1px solid #ddd; padding-bottom: 10px; margin-bottom: 20px;}
+        .container { background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h2 { color: #555; margin-top: 0; }
+        pre {
+            background-color: #e9e9e9;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto; /* Handle long lines */
+            white-space: pre-wrap; /* Wrap long lines */
+            word-wrap: break-word; /* Break words if necessary */
+            font-family: monospace;
+            font-size: 0.95em;
+            border: 1px solid #ccc;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        a {
+            display: inline-block; /* Allows margin */
+            margin-top: 20px;
+            color: #007bff;
+            text-decoration: none;
+            padding: 10px 15px;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        a:hover { background-color: #007bff; color: white; }
+        p { margin-bottom: 5px; }
+        strong { color: #333; }
+
+    </style>
+</head>
+<body>
+    <h1>Translation Result</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="{{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="container">
+        <h2>Original Input</h2>
+        <p><strong>GitHub URL:</strong> {{ github_url }}</p>
+        <p><strong>Original SQL:</strong></p>
+        <pre>{{ original_sql }}</pre>
+    </div>
+
+    {% if translated_sql %}
+    <div class="container">
+        <h2>Translated dbt Jinja SQL</h2>
+        <pre>{{ translated_sql }}</pre>
+    </div>
+    {% endif %}
+
+    <a href="/">Try Another Translation</a>
+
+</body>
+</html>
