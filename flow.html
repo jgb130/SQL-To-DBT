@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnalystFlow Architecture</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Ensure mermaid diagram is visible and centered */
+        .mermaid {
+            text-align: center; /* Center the container */
+            margin-bottom: 1rem; /* Add some space below the diagram */
+        }
+        .mermaid svg {
+            display: inline-block; /* Allow centering */
+            max-width: 100%; /* Prevent overflow */
+            height: auto; /* Maintain aspect ratio */
+            background-color: #fff; /* Ensure background is white */
+        }
+        body {
+            font-family: 'Inter', sans-serif; /* Use Inter font */
+            background-color: #f3f4f6; /* Slightly lighter gray background */
+        }
+        /* Style node text for better readability */
+        .mermaid .node rect {
+             fill: #f8fafc; /* Light background for nodes */
+             stroke: #94a3b8; /* Border color */
+             stroke-width: 1px;
+        }
+        .mermaid .node text {
+            font-size: 11px; /* Slightly smaller font for node text */
+            line-height: 1.3; /* Adjust line height for multi-line */
+            fill: #1e293b; /* Darker text color */
+            font-family: 'Inter', sans-serif; /* Ensure consistent font */
+        }
+        /* Specific styles using IDs */
+        #mermaid-1-AF_Backend rect, /* Mermaid might add prefixes */
+        #AF_Backend rect { fill:#fecdd3; stroke:#e11d48; stroke-width:1.5px; } /* Adjusted pink/red */
+        #mermaid-1-DA rect,
+        #DA rect { fill:#cffafe; stroke:#06b6d4; stroke-width:1.5px; } /* Adjusted cyan */
+        #mermaid-1-DE rect,
+        #DE rect { fill:#dcfce7; stroke:#22c55e; stroke-width:1.5px; } /* Adjusted green */
+        #mermaid-1-AF_UI rect,
+        #AF_UI rect { fill:#fecdd3; stroke:#e11d48; stroke-width:1.5px; } /* Adjusted pink/red */
+
+         /* Style edge labels */
+        .mermaid .edgeLabel {
+            font-size: 10px;
+            background-color: #e2e8f0 !important; /* Light background for labels, !important might be needed */
+            color: #334155 !important; /* Darker text for labels */
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-family: 'Inter', sans-serif; /* Ensure consistent font */
+        }
+         /* Style subgraph titles */
+        .mermaid .label {
+             font-weight: 600;
+             font-size: 14px;
+             fill: #374151; /* Dark gray title */
+             font-family: 'Inter', sans-serif; /* Ensure consistent font */
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+    <h1 class="text-xl md:text-2xl font-semibold text-center mb-6 text-gray-800">AnalystFlow: Visual Architecture Flow</h1>
+
+    <div class="bg-white p-4 md:p-6 rounded-lg shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <pre class="mermaid">
+graph TD
+    subgraph User Interaction
+        DA[Data Analyst]
+    end
+
+    subgraph "AnalystFlow Platform (SaaS)" %% Added quotes around subgraph title with spaces
+        AF_UI["AnalystFlow Web UI
+- SQL Editor
+- DBT Model Browser
+- Simple Settings
+- Test Runner Interface"]
+        AF_Backend["AnalystFlow Backend
+- User Auth & Mgmt
+- SQL Parsing
+- DBT Code Generation (.sql, .yml)
+- Git Integration Logic
+- DBT CLI/API Interaction
+- Metadata Caching"]
+        AF_DB[(Platform DB)]
+    end
+
+    subgraph "Company's Existing Infrastructure" %% Added quotes around subgraph title with spaces
+        Git["Git Repository
+(GitHub/GitLab)
+- Stores DBT Project Code
+- Manages Pull Requests"]
+        DBT_Core["DBT Core Instance
+(CLI / Cloud Service)
+- Executes dbt run, test, etc.
+- Compiles DBT project"]
+        DW["Data Warehouse
+(Snowflake, BigQuery, etc.)
+- Stores Company Data
+- Target for DBT Models"]
+        DE[Data Engineer]
+        BI["BI Tools
+(Tableau, Power BI, etc.)
+- Consume Data Models"]
+    end
+
+    %% Analyst Workflow within AnalystFlow
+    DA -- "1. Writes/Tests SQL" --> AF_UI
+    AF_UI -- "2. Fetches/Displays Models" --> AF_Backend
+    AF_Backend -- "3. Reads Project Structure" --> DBT_Core
+    AF_Backend -- "4. (Optional) Reads Metadata" --> DW
+    DA -- "5. Configures Settings" --> AF_UI
+    DA -- "6. Triggers 'Translate'" --> AF_UI
+    AF_UI -- "7. Sends SQL & Config" --> AF_Backend
+    AF_Backend -- "8. Generates DBT Files" --> AF_Backend
+    AF_Backend -- "9. Creates Commit/PR" --> Git
+    DA -- "10. Triggers 'Run Tests'" --> AF_UI
+    AF_UI -- "11. Requests Test Exec" --> AF_Backend
+    AF_Backend -- "12. Calls 'dbt test'" --> DBT_Core
+    DBT_Core -- "13. Executes Tests Against" --> DW
+    DBT_Core -- "14. Returns Test Results" --> AF_Backend
+    AF_Backend -- "15. Displays Test Results" --> AF_UI
+
+    %% Engineering & Downstream Workflow
+    Git -- "16. Notifies Engineer of PR" --> DE
+    DE -- "17. Reviews & Merges PR" --> Git
+    DBT_Core -- "18. Runs Merged Models" --> DW
+    BI -- "19. Queries Final Models" --> DW
+
+    %% Backend Connections
+    AF_Backend -- "Manages Platform Data" --> AF_DB
+    AF_Backend -- "Interacts via API/CLI" --> DBT_Core
+    AF_Backend -- "Reads/Writes Code" --> Git
+
+        </pre>
+    </div>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        // Initialize Mermaid
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'base', // Use base theme and rely on CSS for styling
+            securityLevel: 'loose', // Allow necessary features
+            flowchart: { // Specific flowchart settings
+                htmlLabels: true // Ensure HTML/newlines in labels are processed correctly
+            }
+         });
+    </script>
+
+</body>
+</html>
